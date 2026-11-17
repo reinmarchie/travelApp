@@ -3,7 +3,7 @@ Jalankan: pip install flask && python app.py  -> http://127.0.0.1:5000
 Akun demo (password semua: 123):
   hendra@mail.com (HRD) | maya@mail.com (Manajer Travel) | andi@mail.com (Member) | rina@mail.com (Pengguna) | tamu@mail.com (Pengunjung)
 """
-import os, re, sqlite3, uuid
+import os, sqlite3, uuid
 from datetime import date, datetime
 from functools import wraps
 from flask import Flask, request, redirect, session, flash, get_flashed_messages, render_template_string, g, url_for
@@ -101,10 +101,23 @@ def me():
 def role_key(u):
     return "member" if u and u["role"] == "user" and u["member"] else (u["role"] if u else None)
 
+def add_csrf(html, token):
+    """Sisipkan token CSRF ke setiap <form ... method=post> (tanpa regex, pencarian linear)."""
+    out, pos = [], 0
+    while True:
+        i = html.find("<form", pos)
+        j = html.find(">", i) if i >= 0 else -1
+        if j < 0: break
+        out.append(html[pos:j + 1])
+        if "method=post" in html[i:j]: out.append(token)
+        pos = j + 1
+    out.append(html[pos:])
+    return "".join(out)
+
 def page(title, body):
     u = me()
     token = f"<input type=hidden name=csrf_token value='{generate_csrf()}'>"
-    body = re.sub(r"<form[^>]*>", lambda m: m.group(0) + token if "method=post" in m.group(0) else m.group(0), body)
+    body = add_csrf(body, token)
     return render_template_string(LAYOUT, t=title, b=body, user=u, nav=NAV.get(role_key(u), []),
                                   cur=request.endpoint, msgs=get_flashed_messages(with_categories=True))
 
