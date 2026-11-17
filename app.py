@@ -104,7 +104,7 @@ def role_key(u):
 def page(title, body):
     u = me()
     token = f"<input type=hidden name=csrf_token value='{generate_csrf()}'>"
-    body = re.sub(r"(<form[^>]*method=post[^>]*>)", lambda m: m.group(1) + token, body)
+    body = re.sub(r"<form[^>]*>", lambda m: m.group(0) + token if "method=post" in m.group(0) else m.group(0), body)
     return render_template_string(LAYOUT, t=title, b=body, user=u, nav=NAV.get(role_key(u), []),
                                   cur=request.endpoint, msgs=get_flashed_messages(with_categories=True))
 
