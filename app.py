@@ -3,14 +3,17 @@ Jalankan: pip install flask && python app.py  -> http://127.0.0.1:5000
 Akun demo (password semua: 123):
   hendra@mail.com (HRD) | maya@mail.com (Manajer Travel) | andi@mail.com (Member) | rina@mail.com (Pengguna) | tamu@mail.com (Pengunjung)
 """
-import sqlite3, uuid
+import os, re, sqlite3, uuid
 from datetime import date, datetime
 from functools import wraps
 from flask import Flask, request, redirect, session, flash, get_flashed_messages, render_template_string, g, url_for
+from flask_wtf.csrf import CSRFProtect, generate_csrf
 from markupsafe import escape
 
 app = Flask(__name__)
-app.secret_key = "ganti-ini-di-produksi"
+# Secret key diambil dari environment variable; jika tidak ada, dibuat acak setiap aplikasi dijalankan.
+app.secret_key = os.environ.get("SECRET_KEY") or os.urandom(32)
+csrf = CSRFProtect(app)  # proteksi CSRF untuk semua form POST
 DB = "travelapp.db"
 STATUS = ["confirmed", "booked", "waiting for the payment"]
 
@@ -100,6 +103,8 @@ def role_key(u):
 
 def page(title, body):
     u = me()
+    token = f"<input type=hidden name=csrf_token value='{generate_csrf()}'>"
+    body = re.sub(r"(<form[^>]*method=post[^>]*>)", lambda m: m.group(1) + token, body)
     return render_template_string(LAYOUT, t=title, b=body, user=u, nav=NAV.get(role_key(u), []),
                                   cur=request.endpoint, msgs=get_flashed_messages(with_categories=True))
 
@@ -351,4 +356,4 @@ def otorisasi():
     return page("Otorisasi Tiket", form)
 
 if __name__ == "__main__":
-    init_db(); app.run(debug=True)
+    init_db(); app.run()
